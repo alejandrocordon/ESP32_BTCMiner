@@ -4,14 +4,13 @@
  * **********************************************/
 
 // Wifi
-#define WIFI_SSID "YourWifi"
-#define WIFI_PASSWORD "Pass"
+#define WIFI_SSID "soda"
+#define WIFI_PASSWORD "Load \"$\",8"
 
 // Mining
 #define THREADS 1
 #define MAX_NONCE 1000000
-#define ADDRESS "yourBTCAddr" 
-
+#define ADDRESS "bc1qgmx5f2zzlymd9a6stqsfl37dryaussxrhcv9dw" 
 
 // Pool
 #define POOL_URL "solo.ckpool.org" //"btc.zsolo.bid" "eu.stratum.slushpool.com"
@@ -35,6 +34,10 @@
   - Modified User_Setup_Select.h to call custom library Setup300_MiniMiner.h
   
 */
+
+//Price 
+//Bitcoin price API powered by CoinDesk - https://www.coindesk.com/price/bitcoin
+#define URL "http://api.coindesk.com/v1/bpi/currentprice/BTC.json"
 
 
 

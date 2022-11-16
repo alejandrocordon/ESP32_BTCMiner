@@ -5,10 +5,13 @@
 #include "Lib/images.h"
 #include "mbedtls/md.h"
 #include "configs.h"
-#include <TFT_eSPI.h> // Graphics and font library for ILI9341 driver chip
+//#include <TFT_eSPI.h> // Graphics and font library for ILI9341 driver chip
 #include <SPI.h>
+#include <HTTPClient.h>
 
-TFT_eSPI tft = TFT_eSPI();  // Invoke library, pins defined in User_Setup.h
+//TFT_eSPI tft = TFT_eSPI();  // Invoke library, pins defined in User_Setup.h
+
+HTTPClient http;
 
 long templates = 0;
 long hashes = 0;
@@ -405,25 +408,26 @@ void runMonitor(void *name) {
     Serial.printf(">>> Completed %d share(s), %d hashes, avg. hashrate %.3f KH/s\n",
       shares, hashes, (1.0*hashes)/elapsed);
 
-    tft.fillRect(0,HEADER_HEIGHT,SC_WIDTH,5,0x5AEB);
+    //tft.fillRect(0,HEADER_HEIGHT,SC_WIDTH,5,0x5AEB);
     unsigned int progress = ((hashes%MAX_NONCE)*1.0/MAX_NONCE)*SC_WIDTH;
-    tft.fillRect(0,HEADER_HEIGHT,progress,5,TFT_GREENYELLOW);
+    /*tft.fillRect(0,HEADER_HEIGHT,progress,5,TFT_GREENYELLOW);
 
     tft.setFreeFont(GLCD);
     tft.fillRect(SC_XCENTER + 5, HEADER_HEIGHT+5, 80, 60, TFT_BLACK);//Clear header text area
     tft.setTextSize(1); tft.setTextColor(TFT_WHITE); tft.setCursor(0, HEADER_HEIGHT+10);
-    tft.print("Avg. hashrate: "); tft.setTextColor(TFT_GREEN); tft.print(String((1.0*hashes)/elapsed)); tft.setTextColor(TFT_WHITE); tft.println(" KH/s");
-    tft.print("Running time : "); tft.setTextColor(TFT_GREEN); tft.print(String(elapsed/1000/60)); tft.setTextColor(TFT_WHITE); tft.print(" m "); tft.setTextColor(TFT_GREEN); tft.print(String((elapsed/1000)%60)); tft.setTextColor(TFT_WHITE); tft.println(" s");
-    tft.print("Total hashes : "); tft.setTextColor(TFT_GREEN); tft.print(String(hashes/1000000)); tft.setTextColor(TFT_WHITE); tft.println(" M");
-    tft.print("Block templ. : "); tft.setTextColor(TFT_YELLOW); tft.println(String(templates)); tft.setTextColor(TFT_WHITE);
-    tft.print("Shares 16bits: "); tft.setTextColor(TFT_YELLOW); tft.println(String(halfshares)); tft.setTextColor(TFT_WHITE);
-    tft.print("Shares 32bits: "); tft.setTextColor(TFT_YELLOW); tft.println(String(shares)); tft.setTextColor(TFT_WHITE);
-    tft.print("Valid blocks : "); tft.setTextColor(TFT_RED); tft.println(String(valids)); tft.setTextColor(TFT_WHITE);
-    tft.println("");tft.println("");
-    tft.drawLine(0,SC_HEIGHT - 30,SC_WIDTH,SC_HEIGHT - 30,TFT_GREENYELLOW);
-    tft.print("Pool: "); tft.setTextColor(TFT_GREENYELLOW); tft.print(POOL_URL); tft.print(":"); tft.println(POOL_PORT); tft.setTextColor(TFT_WHITE);
-    tft.print("IP  : "); tft.setTextColor(TFT_GREENYELLOW); tft.println(WiFi.localIP()); tft.setTextColor(TFT_WHITE);
-    tft.println("");
+    */
+    Serial.print("Avg. hashrate: "); Serial.print(String((1.0*hashes)/elapsed));  Serial.println(" KH/s");
+    Serial.print("Running time : "); Serial.print(String(elapsed/1000/60));  Serial.print(" m ");  Serial.print(String((elapsed/1000)%60)); Serial.println(" s");
+    Serial.print("Total hashes : "); Serial.print(String(hashes/1000000));  Serial.println(" M");
+    Serial.print("Block templ. : "); Serial.println(String(templates));
+    Serial.print("Shares 16bits: "); Serial.println(String(halfshares));
+    Serial.print("Shares 32bits: "); Serial.println(String(shares));
+    Serial.print("Valid blocks : "); Serial.println(String(valids));
+    Serial.println("");Serial.println("");
+    Serial.print("Pool: "); Serial.print(POOL_URL); Serial.print(":"); Serial.println(POOL_PORT);
+    Serial.print("IP  : "); Serial.println(WiFi.localIP());
+    Serial.println("");
+    
     delay(5000);
   }
 }
@@ -435,7 +439,7 @@ void setup(){
   // Idle task that would reset WDT never runs, because core 0 gets fully utilized
   disableCore0WDT();
 
-  tft.init(); //Init tft
+  /*tft.init(); //Init tft
   tft.setRotation(1);
   tft.fillScreen(TFT_BLACK);
   tft.setSwapBytes(true);
@@ -462,13 +466,16 @@ void setup(){
   tft.println("on a ESP32."); tft.println(""); tft.setTextColor(TFT_RED);
   tft.println("WARNING: you may have to wait longer than the current age of the universe to find a valid block.");
   tft.println(); tft.println("Check your probability at Solochance.com");
+  */
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
   }
   delay(3000);
+  /*
   tft.fillRect(0, HEADER_HEIGHT+1, SC_WIDTH, SC_HEIGHT - HEADER_HEIGHT, TFT_BLACK);//Clear header text area
   
+  */
   for (size_t i = 0; i < THREADS; i++) {
     char *name = (char*) malloc(32);
     sprintf(name, "Worker[%d]", i);
@@ -482,5 +489,33 @@ void setup(){
   xTaskCreate(runMonitor, "Monitor", 5000, NULL, 4, NULL);
 }
 
+void getBTCPrice(){
+  http.begin(URL);
+  int httpCode = http.GET();                                                            //Get crypto price from API
+  StaticJsonDocument<2000> doc;
+  DeserializationError error = deserializeJson(doc, http.getString());
+
+  if (error)                                                                            //Display error message if unsuccessful
+  {
+    Serial.print(F("ERROR! deserializeJson Failed"));
+    Serial.println(error.f_str());
+    delay(2500);
+    return;
+  }
+
+  //Serial.print("HTTP Status Code: ");
+  //Serial.println(httpCode);
+
+  String BTCUSDPrice = doc["bpi"]["USD"]["rate_float"].as<String>();                    //Store crypto price and update date in local variables
+  String lastUpdated = doc["time"]["updated"].as<String>();
+  http.end();
+
+  Serial.print("BTCUSD Price: ");                                                       //Display current price on serial monitor
+  Serial.println(BTCUSDPrice.toDouble());
+}
+
 void loop(){
+    // put your main code here, to run repeatedly:
+  getBTCPrice();
+  delay(30000);
 }
