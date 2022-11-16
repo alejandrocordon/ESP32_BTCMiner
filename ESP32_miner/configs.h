@@ -8,7 +8,7 @@
 #define WIFI_PASSWORD "Load \"$\",8"
 
 // Mining
-#define THREADS 1
+#define THREADS 2
 #define MAX_NONCE 1000000
 #define ADDRESS "bc1qgmx5f2zzlymd9a6stqsfl37dryaussxrhcv9dw" 
 
