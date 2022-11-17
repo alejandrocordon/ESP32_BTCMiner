@@ -27,12 +27,12 @@ bool checkHalfShare(unsigned char* hash) {
       break;
     }
   }
-  if (valid) {
+  /*if (valid) {
     Serial.print("\thalf share : ");
     for (size_t i = 0; i < 32; i++)
         Serial.printf("%02x ", hash[i]);
     Serial.println();
-  }
+  }*/
   return valid;
 }
 
@@ -44,12 +44,12 @@ bool checkShare(unsigned char* hash) {
       break;
     }
   }
-  if (valid) {
+  /*if (valid) {
     Serial.print("\tshare : ");
     for (size_t i = 0; i < 32; i++)
         Serial.printf("%02x ", hash[i]);
     Serial.println();
-  }
+  }*/
   return valid;
 }
 
@@ -64,12 +64,12 @@ bool checkValid(unsigned char* hash, unsigned char* target) {
       break;
     }
   }
-  if (valid) {
+  /*if (valid) {
     Serial.print("\tvalid : ");
     for (size_t i = 0; i < 32; i++)
         Serial.printf("%02x ", hash[i]);
-    Serial.println();
-  }
+    /Serial.println();
+  }*/
   return valid;
 }
 
@@ -118,10 +118,10 @@ void runWorker(void *name) {
     String line;
     // pool: server connection
     payload = String("{\"id\": 1, \"method\": \"mining.subscribe\", \"params\": []}\n");
-    Serial.print("Sending  : "); Serial.println(payload);
+    //Serial.print("Sending  : "); Serial.println(payload);
     client.print(payload.c_str());
     line  = client.readStringUntil('\n');
-    Serial.print("Receiving: "); Serial.println(line);
+    //Serial.print("Receiving: "); Serial.println(line);
     deserializeJson(doc, line);
     String sub_details = String((const char*) doc["result"][0][0][1]);
     String extranonce1 = String((const char*) doc["result"][1]);
@@ -129,18 +129,18 @@ void runWorker(void *name) {
     line  = client.readStringUntil('\n');
     deserializeJson(doc, line);
     String method = String((const char*) doc["method"]);
-    Serial.print("sub_details: "); Serial.println(sub_details);
-    Serial.print("extranonce1: "); Serial.println(extranonce1);
-    Serial.print("extranonce2_size: "); Serial.println(extranonce2_size);
-    Serial.print("method: "); Serial.println(method);
+    //Serial.print("sub_details: "); Serial.println(sub_details);
+    //Serial.print("extranonce1: "); Serial.println(extranonce1);
+    //Serial.print("extranonce2_size: "); Serial.println(extranonce2_size);
+    //Serial.print("method: "); Serial.println(method);
     if(extranonce1.length() == 0) { Serial.println(">>>>>>>>> Worker aborted"); break; }
     
     // pool: authorize work
     payload = String("{\"params\": [\"") + ADDRESS + String("\", \"password\"], \"id\": 2, \"method\": \"mining.authorize\"}\n");
-    Serial.print("Sending  : "); Serial.println(payload);
+    //Serial.print("Sending  : "); Serial.println(payload);
     client.print(payload.c_str());
     line  = client.readStringUntil('\n');
-    Serial.print("Receiving: "); Serial.println(line);
+    //Serial.print("Receiving: "); Serial.println(line);
     deserializeJson(doc, line);
     String job_id = String((const char*) doc["params"][0]);
     String prevhash = String((const char*) doc["params"][1]);
@@ -151,15 +151,15 @@ void runWorker(void *name) {
     String nbits = String((const char*) doc["params"][6]);
     String ntime = String((const char*) doc["params"][7]);
     bool clean_jobs = doc["params"][8]; //bool
-    Serial.print("job_id: "); Serial.println(job_id);
-    Serial.print("prevhash: "); Serial.println(prevhash);
-    Serial.print("coinb1: "); Serial.println(coinb1);
-    Serial.print("coinb2: "); Serial.println(coinb2);
-    Serial.print("merkle_branch size: "); Serial.println(merkle_branch.size());
-    Serial.print("version: "); Serial.println(version);
-    Serial.print("nbits: "); Serial.println(nbits);
-    Serial.print("ntime: "); Serial.println(ntime);
-    Serial.print("clean_jobs: "); Serial.println(clean_jobs);
+    //Serial.print("job_id: "); Serial.println(job_id);
+    //Serial.print("prevhash: "); Serial.println(prevhash);
+    //Serial.print("coinb1: "); Serial.println(coinb1);
+    //Serial.print("coinb2: "); Serial.println(coinb2);
+    //Serial.print("merkle_branch size: "); Serial.println(merkle_branch.size());
+    //Serial.print("version: "); Serial.println(version);
+    //Serial.print("nbits: "); Serial.println(nbits);
+    //Serial.print("ntime: "); Serial.println(ntime);
+    //Serial.print("clean_jobs: "); Serial.println(clean_jobs);
     line  = client.readStringUntil('\n');
     deserializeJson(doc, line);
     line  = client.readStringUntil('\n');
@@ -175,7 +175,7 @@ void runWorker(void *name) {
     for (int k=0; k<fill; k++) {
       target = String("0") + target;
     }
-    Serial.print("target: "); Serial.println(target);
+    //Serial.print("target: "); Serial.println(target);
     // bytearray target
     uint8_t bytearray_target[32];
     size_t size_target = to_byte_array(target.c_str(), 32, bytearray_target);
@@ -200,20 +200,21 @@ void runWorker(void *name) {
       extranonce2_b = String("0") + extranonce2_b;
     }
     String extranonce2 = extranonce2_a + extranonce2_b;
-    Serial.print("extranonce2: "); Serial.println(extranonce2);
+    //Serial.print("extranonce2: "); Serial.println(extranonce2);
 
     //get coinbase - coinbase_hash_bin = hashlib.sha256(hashlib.sha256(binascii.unhexlify(coinbase)).digest()).digest()
     String coinbase = coinb1 + extranonce1 + extranonce2 + coinb2;
-    Serial.print("coinbase: "); Serial.println(coinbase);
+    //Serial.print("coinbase: "); Serial.println(coinbase);
     size_t str_len = coinbase.length()/2;
     uint8_t bytearray[str_len];
 
-    Serial.print("coinbase bytes - size ");
+    //Serial.print("coinbase bytes - size ");
     size_t res = to_byte_array(coinbase.c_str(), str_len*2, bytearray);
-    Serial.println(res);
-    for (size_t i = 0; i < res; i++)
+    //Serial.println(res);
+    /*for (size_t i = 0; i < res; i++)
         Serial.printf("%02x ", bytearray[i]);
     Serial.println("---");
+    */
 
     mbedtls_md_context_t ctx;
     mbedtls_md_type_t md_type = MBEDTLS_MD_SHA256;
@@ -231,10 +232,11 @@ void runWorker(void *name) {
     mbedtls_md_update(&ctx, interResult, 32);
     mbedtls_md_finish(&ctx, shaResult);
 
-    Serial.print("coinbase double sha: ");
+    /*Serial.print("coinbase double sha: ");
     for (size_t i = 0; i < 32; i++)
         Serial.printf("%02x ", shaResult[i]);
     Serial.println("");
+    */
 
     byte merkle_result[32];
     // copy coinbase hash
@@ -247,15 +249,16 @@ void runWorker(void *name) {
         uint8_t bytearray[32];
         size_t res = to_byte_array(merkle_element, 64, bytearray);
 
-        Serial.print("\tmerkle element    "); Serial.print(k); Serial.print(": "); Serial.println(merkle_element);
+        //Serial.print("\tmerkle element    "); Serial.print(k); Serial.print(": "); Serial.println(merkle_element);
         for (size_t i = 0; i < 32; i++) {
           merkle_concatenated[i] = merkle_result[i];
           merkle_concatenated[32 + i] = bytearray[i];
         }
-        Serial.print("\tmerkle concatenated: ");
+        /*Serial.print("\tmerkle concatenated: ");
         for (size_t i = 0; i < 64; i++)
             Serial.printf("%02x", merkle_concatenated[i]);
         Serial.println("");
+        */
             
         mbedtls_md_starts(&ctx);
         mbedtls_md_update(&ctx, merkle_concatenated, 64);
@@ -265,10 +268,11 @@ void runWorker(void *name) {
         mbedtls_md_update(&ctx, interResult, 32);
         mbedtls_md_finish(&ctx, merkle_result);
 
-        Serial.print("\tmerkle sha         : ");
+        /*Serial.print("\tmerkle sha         : ");
         for (size_t i = 0; i < 32; i++)
             Serial.printf("%02x", merkle_result[i]);
         Serial.println("");
+        */
     }
     // merkle root from merkle_result
     String merkle_root = String("");
@@ -280,12 +284,12 @@ void runWorker(void *name) {
 
     // calculate blockheader
     String blockheader = version + prevhash + merkle_root + nbits + ntime + "00000000"; 
-    Serial.println("blockheader bytes");
+    //Serial.println("blockheader bytes");
     str_len = blockheader.length()/2;
     uint8_t bytearray_blockheader[str_len];
-    Serial.println(str_len);
+    //Serial.println(str_len);
     res = to_byte_array(blockheader.c_str(), str_len*2, bytearray_blockheader);
-    Serial.println(res);
+    //Serial.println(res);
     // reverse version
     uint8_t buff;
     size_t bsize, boffset;
@@ -312,7 +316,7 @@ void runWorker(void *name) {
         bytearray_blockheader[j] = bytearray_blockheader[2 * boffset + bsize - 1 - j];
         bytearray_blockheader[2 * boffset + bsize - 1 - j] = buff;
     }
-    Serial.println("");
+    /*Serial.println("");
     Serial.println("version");
     for (size_t i = 0; i < 4; i++)
         Serial.printf("%02x ", bytearray_blockheader[i]);
@@ -337,6 +341,7 @@ void runWorker(void *name) {
     for (size_t i = 76; i < 76+4; i++)
         Serial.printf("%02x ", bytearray_blockheader[i]);
     Serial.println("");
+    */
 
     // search a valid nonce
     uint32_t nonce = 0;
@@ -358,8 +363,8 @@ void runWorker(void *name) {
 
       // check if half share
       if(checkHalfShare(shaResult)) {
-        Serial.printf("%s on core %d: ", (char *)name, xPortGetCoreID());
-        Serial.printf("Half share completed with nonce: %d | 0x%x\n", nonce, nonce);
+        //Serial.printf("%s on core %d: ", (char *)name, xPortGetCoreID());
+        //Serial.printf("Half share completed with nonce: %d | 0x%x\n", nonce, nonce);
         halfshares++;
         // check if share
         if(checkShare(shaResult)) {
@@ -428,7 +433,7 @@ void runMonitor(void *name) {
     Serial.print("IP  : "); Serial.println(WiFi.localIP());
     Serial.println("");
     
-    delay(5000);
+    delay(25000);
   }
 }
 
