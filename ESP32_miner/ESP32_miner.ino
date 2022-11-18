@@ -15,19 +15,23 @@ HTTPClient http;
 
 long templates = 0;
 long hashes = 0;
-int halfshares = 0; // increase if blockhash has 16 bits of zeroes
-int shares = 0; // increase if blockhash has 32 bits of zeroes
-int valids = 0; // increased if blockhash <= target
+int halfshares = 0;  // increase if blockhash has 16 bits of zeroes
+int shares = 0;      // increase if blockhash has 32 bits of zeroes
+int valids = 0;      // increased if blockhash <= target
 
-bool checkHalfShare(unsigned char* hash) {
+int REDledPin = 2;
+int YELLOWledPin = 4;
+int GREENledPin = 22;
+
+bool checkHalfShare(unsigned char *hash) {
   bool valid = true;
-  for(uint8_t i=31; i>31-2; i--) {
-    if(hash[i] != 0) {
+  for (uint8_t i = 31; i > 31 - 2; i--) {
+    if (hash[i] != 0) {
       valid = false;
       break;
     }
   }
-  /*if (valid) {
+ /* if (valid) {
     Serial.print("\thalf share : ");
     for (size_t i = 0; i < 32; i++)
         Serial.printf("%02x ", hash[i]);
@@ -36,10 +40,10 @@ bool checkHalfShare(unsigned char* hash) {
   return valid;
 }
 
-bool checkShare(unsigned char* hash) {
+bool checkShare(unsigned char *hash) {
   bool valid = true;
-  for(uint8_t i=31; i>31-4; i--) {
-    if(hash[i] != 0) {
+  for (uint8_t i = 31; i > 31 - 4; i--) {
+    if (hash[i] != 0) {
       valid = false;
       break;
     }
@@ -53,10 +57,10 @@ bool checkShare(unsigned char* hash) {
   return valid;
 }
 
-bool checkValid(unsigned char* hash, unsigned char* target) {
+bool checkValid(unsigned char *hash, unsigned char *target) {
   bool valid = true;
-  for(uint8_t i=31; i>=0; i--) {
-    if(hash[i] > target[i]) {
+  for (uint8_t i = 31; i >= 0; i--) {
+    if (hash[i] > target[i]) {
       valid = false;
       break;
     } else if (hash[i] < target[i]) {
@@ -74,35 +78,35 @@ bool checkValid(unsigned char* hash, unsigned char* target) {
 }
 
 uint8_t hex(char ch) {
-    uint8_t r = (ch > 57) ? (ch - 55) : (ch - 48);
-    return r & 0x0F;
+  uint8_t r = (ch > 57) ? (ch - 55) : (ch - 48);
+  return r & 0x0F;
 }
 
 int to_byte_array(const char *in, size_t in_size, uint8_t *out) {
-    int count = 0;
-    if (in_size % 2) {
-        while (*in && out) {
-            *out = hex(*in++);
-            if (!*in)
-                return count;
-            *out = (*out << 4) | hex(*in++);
-            *out++;
-            count++;
-        }
+  int count = 0;
+  if (in_size % 2) {
+    while (*in && out) {
+      *out = hex(*in++);
+      if (!*in)
         return count;
-    } else {
-        while (*in && out) {
-            *out++ = (hex(*in++) << 4) | hex(*in++);
-            count++;
-        }
-        return count;
+      *out = (*out << 4) | hex(*in++);
+      *out++;
+      count++;
     }
+    return count;
+  } else {
+    while (*in && out) {
+      *out++ = (hex(*in++) << 4) | hex(*in++);
+      count++;
+    }
+    return count;
+  }
 }
 
 void runWorker(void *name) {
   Serial.printf("\nRunning %s on core %d\n", (char *)name, xPortGetCoreID());
-  delay(random(0,2000));
-  while(true) { 
+  delay(random(0, 2000));
+  while (true) {
     // connect to pool
     WiFiClient client;
     if (!client.connect(POOL_URL, POOL_PORT)) {
@@ -120,37 +124,40 @@ void runWorker(void *name) {
     payload = String("{\"id\": 1, \"method\": \"mining.subscribe\", \"params\": []}\n");
     //Serial.print("Sending  : "); Serial.println(payload);
     client.print(payload.c_str());
-    line  = client.readStringUntil('\n');
+    line = client.readStringUntil('\n');
     //Serial.print("Receiving: "); Serial.println(line);
     deserializeJson(doc, line);
-    String sub_details = String((const char*) doc["result"][0][0][1]);
-    String extranonce1 = String((const char*) doc["result"][1]);
+    String sub_details = String((const char *)doc["result"][0][0][1]);
+    String extranonce1 = String((const char *)doc["result"][1]);
     int extranonce2_size = doc["result"][2];
-    line  = client.readStringUntil('\n');
+    line = client.readStringUntil('\n');
     deserializeJson(doc, line);
-    String method = String((const char*) doc["method"]);
+    String method = String((const char *)doc["method"]);
     //Serial.print("sub_details: "); Serial.println(sub_details);
     //Serial.print("extranonce1: "); Serial.println(extranonce1);
     //Serial.print("extranonce2_size: "); Serial.println(extranonce2_size);
     //Serial.print("method: "); Serial.println(method);
-    if(extranonce1.length() == 0) { Serial.println(">>>>>>>>> Worker aborted"); break; }
-    
+    if (extranonce1.length() == 0) {
+      Serial.println(">>>>>>>>> Worker aborted");
+      break;
+    }
+
     // pool: authorize work
     payload = String("{\"params\": [\"") + ADDRESS + String("\", \"password\"], \"id\": 2, \"method\": \"mining.authorize\"}\n");
     //Serial.print("Sending  : "); Serial.println(payload);
     client.print(payload.c_str());
-    line  = client.readStringUntil('\n');
+    line = client.readStringUntil('\n');
     //Serial.print("Receiving: "); Serial.println(line);
     deserializeJson(doc, line);
-    String job_id = String((const char*) doc["params"][0]);
-    String prevhash = String((const char*) doc["params"][1]);
-    String coinb1 = String((const char*) doc["params"][2]);
-    String coinb2 = String((const char*) doc["params"][3]);
+    String job_id = String((const char *)doc["params"][0]);
+    String prevhash = String((const char *)doc["params"][1]);
+    String coinb1 = String((const char *)doc["params"][2]);
+    String coinb2 = String((const char *)doc["params"][3]);
     JsonArray merkle_branch = doc["params"][4];
-    String version = String((const char*) doc["params"][5]);
-    String nbits = String((const char*) doc["params"][6]);
-    String ntime = String((const char*) doc["params"][7]);
-    bool clean_jobs = doc["params"][8]; //bool
+    String version = String((const char *)doc["params"][5]);
+    String nbits = String((const char *)doc["params"][6]);
+    String ntime = String((const char *)doc["params"][7]);
+    bool clean_jobs = doc["params"][8];  //bool
     //Serial.print("job_id: "); Serial.println(job_id);
     //Serial.print("prevhash: "); Serial.println(prevhash);
     //Serial.print("coinb1: "); Serial.println(coinb1);
@@ -160,19 +167,19 @@ void runWorker(void *name) {
     //Serial.print("nbits: "); Serial.println(nbits);
     //Serial.print("ntime: "); Serial.println(ntime);
     //Serial.print("clean_jobs: "); Serial.println(clean_jobs);
-    line  = client.readStringUntil('\n');
+    line = client.readStringUntil('\n');
     deserializeJson(doc, line);
-    line  = client.readStringUntil('\n');
+    line = client.readStringUntil('\n');
     deserializeJson(doc, line);
 
     // calculate target - target = (nbits[2:]+'00'*(int(nbits[:2],16) - 3)).zfill(64)
     String target = nbits.substring(2);
-    int zeros = (int) strtol(nbits.substring(0, 2).c_str(), 0, 16) - 3;
-    for (int k=0; k<zeros; k++) {
+    int zeros = (int)strtol(nbits.substring(0, 2).c_str(), 0, 16) - 3;
+    for (int k = 0; k < zeros; k++) {
       target = target + String("00");
     }
     int fill = 64 - target.length();
-    for (int k=0; k<fill; k++) {
+    for (int k = 0; k < fill; k++) {
       target = String("0") + target;
     }
     //Serial.print("target: "); Serial.println(target);
@@ -181,9 +188,9 @@ void runWorker(void *name) {
     size_t size_target = to_byte_array(target.c_str(), 32, bytearray_target);
     uint8_t buf;
     for (size_t j = 0; j < 16; j++) {
-        buf = bytearray_target[j];
-        bytearray_target[j] = bytearray_target[size_target - 1 - j];
-        bytearray_target[size_target - 1 - j] = buf;
+      buf = bytearray_target[j];
+      bytearray_target[j] = bytearray_target[size_target - 1 - j];
+      bytearray_target[size_target - 1 - j] = buf;
     }
 
     // get extranonce2 - extranonce2 = hex(random.randint(0,2**32-1))[2:].zfill(2*extranonce2_size)
@@ -192,11 +199,11 @@ void runWorker(void *name) {
     String extranonce2_a = String(extranonce2_a_bin, HEX);
     String extranonce2_b = String(extranonce2_b_bin, HEX);
     uint8_t pad = 8 - extranonce2_a.length();
-    for (int k=0; k<pad; k++) {
+    for (int k = 0; k < pad; k++) {
       extranonce2_a = String("0") + extranonce2_a;
     }
     pad = 8 - extranonce2_b.length();
-    for (int k=0; k<pad; k++) {
+    for (int k = 0; k < pad; k++) {
       extranonce2_b = String("0") + extranonce2_b;
     }
     String extranonce2 = extranonce2_a + extranonce2_b;
@@ -205,11 +212,11 @@ void runWorker(void *name) {
     //get coinbase - coinbase_hash_bin = hashlib.sha256(hashlib.sha256(binascii.unhexlify(coinbase)).digest()).digest()
     String coinbase = coinb1 + extranonce1 + extranonce2 + coinb2;
     //Serial.print("coinbase: "); Serial.println(coinbase);
-    size_t str_len = coinbase.length()/2;
+    size_t str_len = coinbase.length() / 2;
     uint8_t bytearray[str_len];
 
     //Serial.print("coinbase bytes - size ");
-    size_t res = to_byte_array(coinbase.c_str(), str_len*2, bytearray);
+    size_t res = to_byte_array(coinbase.c_str(), str_len * 2, bytearray);
     //Serial.println(res);
     /*for (size_t i = 0; i < res; i++)
         Serial.printf("%02x ", bytearray[i]);
@@ -221,9 +228,9 @@ void runWorker(void *name) {
     mbedtls_md_init(&ctx);
     mbedtls_md_setup(&ctx, mbedtls_md_info_from_type(md_type), 0);
 
-    byte interResult[32]; // 256 bit
-    byte shaResult[32]; // 256 bit
-  
+    byte interResult[32];  // 256 bit
+    byte shaResult[32];    // 256 bit
+
     mbedtls_md_starts(&ctx);
     mbedtls_md_update(&ctx, bytearray, str_len);
     mbedtls_md_finish(&ctx, interResult);
@@ -242,33 +249,33 @@ void runWorker(void *name) {
     // copy coinbase hash
     for (size_t i = 0; i < 32; i++)
       merkle_result[i] = shaResult[i];
-    
-    byte merkle_concatenated[32 * 2];
-    for (size_t k=0; k<merkle_branch.size(); k++) {
-        const char* merkle_element = (const char*) merkle_branch[k];
-        uint8_t bytearray[32];
-        size_t res = to_byte_array(merkle_element, 64, bytearray);
 
-        //Serial.print("\tmerkle element    "); Serial.print(k); Serial.print(": "); Serial.println(merkle_element);
-        for (size_t i = 0; i < 32; i++) {
-          merkle_concatenated[i] = merkle_result[i];
-          merkle_concatenated[32 + i] = bytearray[i];
-        }
-        /*Serial.print("\tmerkle concatenated: ");
+    byte merkle_concatenated[32 * 2];
+    for (size_t k = 0; k < merkle_branch.size(); k++) {
+      const char *merkle_element = (const char *)merkle_branch[k];
+      uint8_t bytearray[32];
+      size_t res = to_byte_array(merkle_element, 64, bytearray);
+
+      //Serial.print("\tmerkle element    "); Serial.print(k); Serial.print(": "); Serial.println(merkle_element);
+      for (size_t i = 0; i < 32; i++) {
+        merkle_concatenated[i] = merkle_result[i];
+        merkle_concatenated[32 + i] = bytearray[i];
+      }
+      /*Serial.print("\tmerkle concatenated: ");
         for (size_t i = 0; i < 64; i++)
             Serial.printf("%02x", merkle_concatenated[i]);
         Serial.println("");
         */
-            
-        mbedtls_md_starts(&ctx);
-        mbedtls_md_update(&ctx, merkle_concatenated, 64);
-        mbedtls_md_finish(&ctx, interResult);
 
-        mbedtls_md_starts(&ctx);
-        mbedtls_md_update(&ctx, interResult, 32);
-        mbedtls_md_finish(&ctx, merkle_result);
+      mbedtls_md_starts(&ctx);
+      mbedtls_md_update(&ctx, merkle_concatenated, 64);
+      mbedtls_md_finish(&ctx, interResult);
 
-        /*Serial.print("\tmerkle sha         : ");
+      mbedtls_md_starts(&ctx);
+      mbedtls_md_update(&ctx, interResult, 32);
+      mbedtls_md_finish(&ctx, merkle_result);
+
+      /*Serial.print("\tmerkle sha         : ");
         for (size_t i = 0; i < 32; i++)
             Serial.printf("%02x", merkle_result[i]);
         Serial.println("");
@@ -276,45 +283,45 @@ void runWorker(void *name) {
     }
     // merkle root from merkle_result
     String merkle_root = String("");
-    for (int i=0; i<32; i++)
+    for (int i = 0; i < 32; i++)
       merkle_root = merkle_root + String(merkle_result[i], HEX);
 
     // create block header
     uint8_t dest_buff[80];
 
     // calculate blockheader
-    String blockheader = version + prevhash + merkle_root + nbits + ntime + "00000000"; 
+    String blockheader = version + prevhash + merkle_root + nbits + ntime + "00000000";
     //Serial.println("blockheader bytes");
-    str_len = blockheader.length()/2;
+    str_len = blockheader.length() / 2;
     uint8_t bytearray_blockheader[str_len];
     //Serial.println(str_len);
-    res = to_byte_array(blockheader.c_str(), str_len*2, bytearray_blockheader);
+    res = to_byte_array(blockheader.c_str(), str_len * 2, bytearray_blockheader);
     //Serial.println(res);
     // reverse version
     uint8_t buff;
     size_t bsize, boffset;
     boffset = 0;
     bsize = 4;
-    for (size_t j = boffset; j < boffset + (bsize/2); j++) {
-        buff = bytearray_blockheader[j];
-        bytearray_blockheader[j] = bytearray_blockheader[2 * boffset + bsize - 1 - j];
-        bytearray_blockheader[2 * boffset + bsize - 1 - j] = buff;
+    for (size_t j = boffset; j < boffset + (bsize / 2); j++) {
+      buff = bytearray_blockheader[j];
+      bytearray_blockheader[j] = bytearray_blockheader[2 * boffset + bsize - 1 - j];
+      bytearray_blockheader[2 * boffset + bsize - 1 - j] = buff;
     }
-    // reverse merkle 
+    // reverse merkle
     boffset = 36;
     bsize = 32;
-    for (size_t j = boffset; j < boffset + (bsize/2); j++) {
-        buff = bytearray_blockheader[j];
-        bytearray_blockheader[j] = bytearray_blockheader[2 * boffset + bsize - 1 - j];
-        bytearray_blockheader[2 * boffset + bsize - 1 - j] = buff;
+    for (size_t j = boffset; j < boffset + (bsize / 2); j++) {
+      buff = bytearray_blockheader[j];
+      bytearray_blockheader[j] = bytearray_blockheader[2 * boffset + bsize - 1 - j];
+      bytearray_blockheader[2 * boffset + bsize - 1 - j] = buff;
     }
     // reverse difficulty
     boffset = 72;
     bsize = 4;
-    for (size_t j = boffset; j < boffset + (bsize/2); j++) {
-        buff = bytearray_blockheader[j];
-        bytearray_blockheader[j] = bytearray_blockheader[2 * boffset + bsize - 1 - j];
-        bytearray_blockheader[2 * boffset + bsize - 1 - j] = buff;
+    for (size_t j = boffset; j < boffset + (bsize / 2); j++) {
+      buff = bytearray_blockheader[j];
+      bytearray_blockheader[j] = bytearray_blockheader[2 * boffset + bsize - 1 - j];
+      bytearray_blockheader[2 * boffset + bsize - 1 - j] = buff;
     }
     /*Serial.println("");
     Serial.println("version");
@@ -346,7 +353,7 @@ void runWorker(void *name) {
     // search a valid nonce
     uint32_t nonce = 0;
     uint32_t startT = micros();
-    while(true) {
+    while (true) {
       bytearray_blockheader[76] = (nonce >> 0) & 0xFF;
       bytearray_blockheader[77] = (nonce >> 8) & 0xFF;
       bytearray_blockheader[78] = (nonce >> 16) & 0xFF;
@@ -362,84 +369,118 @@ void runWorker(void *name) {
       mbedtls_md_finish(&ctx, shaResult);
 
       // check if half share
-      if(checkHalfShare(shaResult)) {
+      if (checkHalfShare(shaResult)) {
         //Serial.printf("%s on core %d: ", (char *)name, xPortGetCoreID());
         //Serial.printf("Half share completed with nonce: %d | 0x%x\n", nonce, nonce);
         halfshares++;
         // check if share
-        if(checkShare(shaResult)) {
+        if (checkShare(shaResult)) {
           Serial.printf("%s on core %d: ", (char *)name, xPortGetCoreID());
           Serial.printf("Share completed with nonce: %d | 0x%x\n", nonce, nonce);
           shares++;
         }
       }
-      
+
       // check if valid header
-      if(checkValid(shaResult, bytearray_target)) {
+      if (checkValid(shaResult, bytearray_target)) {
         Serial.printf("%s on core %d: ", (char *)name, xPortGetCoreID());
         Serial.printf("Valid completed with nonce: %d | 0x%x\n", nonce, nonce);
         valids++;
-        payload = String("{\"params\": [\"") + ADDRESS + String("\", \"") + job_id + String("\", \"") + extranonce2 + String("\", \"") + ntime + String("\", \"") + nonce +String("\"], \"id\": 1, \"method\": \"mining.submit\"");
-        Serial.print("Sending  : "); Serial.println(payload);
+        payload = String("{\"params\": [\"") + ADDRESS + String("\", \"") + job_id + String("\", \"") + extranonce2 + String("\", \"") + ntime + String("\", \"") + nonce + String("\"], \"id\": 1, \"method\": \"mining.submit\"");
+        Serial.print("Sending  : ");
+        Serial.println(payload);
         client.print(payload.c_str());
-        line  = client.readStringUntil('\n');
-        Serial.print("Receiving: "); Serial.println(line);
-        // exit 
+        line = client.readStringUntil('\n');
+        Serial.print("Receiving: ");
+        Serial.println(line);
+        // exit
         nonce = MAX_NONCE;
         break;
       }
 
       nonce++;
       hashes++;
-      // exit 
+      // exit
       if (nonce >= MAX_NONCE) {
         Serial.printf("%s on core %d: ", (char *)name, xPortGetCoreID());
         Serial.printf("Nonce > MAX_NONCE\n");
         break;
       }
-    } // exit if found a valid result or nonce > MAX_NONCE
+    }  // exit if found a valid result or nonce > MAX_NONCE
     uint32_t duration = micros() - startT;
     mbedtls_md_free(&ctx);
     // close pool connection
     client.stop();
   }
-
 }
 
 void runMonitor(void *name) {
   unsigned long start = millis();
   while (1) {
-    unsigned long elapsed = millis()-start;
+    unsigned long elapsed = millis() - start;
     Serial.printf(">>> Completed %d share(s), %d hashes, avg. hashrate %.3f KH/s\n",
-      shares, hashes, (1.0*hashes)/elapsed);
+                  shares, hashes, (1.0 * hashes) / elapsed);
 
     //tft.fillRect(0,HEADER_HEIGHT,SC_WIDTH,5,0x5AEB);
-    unsigned int progress = ((hashes%MAX_NONCE)*1.0/MAX_NONCE)*SC_WIDTH;
+    unsigned int progress = ((hashes % MAX_NONCE) * 1.0 / MAX_NONCE) * SC_WIDTH;
     /*tft.fillRect(0,HEADER_HEIGHT,progress,5,TFT_GREENYELLOW);
 
     tft.setFreeFont(GLCD);
     tft.fillRect(SC_XCENTER + 5, HEADER_HEIGHT+5, 80, 60, TFT_BLACK);//Clear header text area
     tft.setTextSize(1); tft.setTextColor(TFT_WHITE); tft.setCursor(0, HEADER_HEIGHT+10);
     */
-    Serial.print("Avg. hashrate: "); Serial.print(String((1.0*hashes)/elapsed));  Serial.println(" KH/s");
-    Serial.print("Running time : "); Serial.print(String(elapsed/1000/60));  Serial.print(" m ");  Serial.print(String((elapsed/1000)%60)); Serial.println(" s");
-    Serial.print("Total hashes : "); Serial.print(String(hashes/1000000));  Serial.println(" M");
-    Serial.print("Block templ. : "); Serial.println(String(templates));
-    Serial.print("Shares 16bits: "); Serial.println(String(halfshares));
-    Serial.print("Shares 32bits: "); Serial.println(String(shares));
-    Serial.print("Valid blocks : "); Serial.println(String(valids));
-    Serial.println("");Serial.println("");
-    Serial.print("Pool: "); Serial.print(POOL_URL); Serial.print(":"); Serial.println(POOL_PORT);
-    Serial.print("IP  : "); Serial.println(WiFi.localIP());
+    Serial.print("Avg. hashrate: ");
+    Serial.print(String((1.0 * hashes) / elapsed));
+    Serial.println(" KH/s");
+    Serial.print("Running time : ");
+    Serial.print(String(elapsed / 1000 / 60));
+    Serial.print(" m ");
+    Serial.print(String((elapsed / 1000) % 60));
+    Serial.println(" s");
+    Serial.print("Total hashes : ");
+    Serial.print(String(hashes / 1000000));
+    Serial.println(" M");
+    Serial.print("Block templ. : ");
+    Serial.println(String(templates));
+    Serial.print("Shares 16bits: ");
+    Serial.println(String(halfshares));
+    if (halfshares>0){
+      digitalWrite(REDledPin,HIGH);
+    }  
+    Serial.print("Shares 32bits: ");
+    Serial.println(String(shares));
+    if (shares>0){
+      digitalWrite(YELLOWledPin,HIGH);
+    }
+    Serial.print("Valid blocks : ");
+    Serial.println(String(valids));
+    if (valids>0){
+      digitalWrite(GREENledPin,HIGH);
+    }
     Serial.println("");
-    
+    Serial.println("");
+    Serial.print("Pool: ");
+    Serial.print(POOL_URL);
+    Serial.print(":");
+    Serial.println(POOL_PORT);
+    Serial.print("IP  : ");
+    Serial.println(WiFi.localIP());
+    Serial.println("");
+
     delay(25000);
+    digitalWrite(REDledPin,LOW);
+    digitalWrite(YELLOWledPin,LOW);
+    digitalWrite(GREENledPin,LOW);
+    
   }
 }
 
-void setup(){
+void setup() {
   Serial.begin(115200);
   delay(500);
+  pinMode(REDledPin, OUTPUT);
+  pinMode(YELLOWledPin, OUTPUT);
+  pinMode(GREENledPin, OUTPUT);
 
   // Idle task that would reset WDT never runs, because core 0 gets fully utilized
   disableCore0WDT();
@@ -482,25 +523,25 @@ void setup(){
   
   */
   for (size_t i = 0; i < THREADS; i++) {
-    char *name = (char*) malloc(32);
+    char *name = (char *)malloc(32);
     sprintf(name, "Worker[%d]", i);
 
     // Start mining tasks
-    BaseType_t res = xTaskCreate(runWorker, name, 35000, (void*)name, 1, NULL);
-    Serial.printf("Starting %s %s!\n", name, res == pdPASS? "successful":"failed");
+    BaseType_t res = xTaskCreate(runWorker, name, 35000, (void *)name, 1, NULL);
+    Serial.printf("Starting %s %s!\n", name, res == pdPASS ? "successful" : "failed");
   }
 
   // Higher prio monitor task
   xTaskCreate(runMonitor, "Monitor", 5000, NULL, 4, NULL);
 }
 
-void getBTCPrice(){
+void getBTCPrice() {
   http.begin(URL);
-  int httpCode = http.GET();                                                            //Get crypto price from API
+  int httpCode = http.GET();  //Get crypto price from API
   StaticJsonDocument<2000> doc;
   DeserializationError error = deserializeJson(doc, http.getString());
 
-  if (error)                                                                            //Display error message if unsuccessful
+  if (error)  //Display error message if unsuccessful
   {
     Serial.print(F("ERROR! deserializeJson Failed"));
     Serial.println(error.f_str());
@@ -511,16 +552,17 @@ void getBTCPrice(){
   //Serial.print("HTTP Status Code: ");
   //Serial.println(httpCode);
 
-  String BTCUSDPrice = doc["bpi"]["USD"]["rate_float"].as<String>();                    //Store crypto price and update date in local variables
+  String BTCUSDPrice = doc["bpi"]["USD"]["rate_float"].as<String>();  //Store crypto price and update date in local variables
   String lastUpdated = doc["time"]["updated"].as<String>();
   http.end();
 
-  Serial.print("BTCUSD Price: ");                                                       //Display current price on serial monitor
+  Serial.print("BTCUSD Price: ");  //Display current price on serial monitor
   Serial.println(BTCUSDPrice.toDouble());
 }
 
-void loop(){
-    // put your main code here, to run repeatedly:
+void loop() {
+  // put your main code here, to run repeatedly:
   getBTCPrice();
   delay(30000);
+  
 }
