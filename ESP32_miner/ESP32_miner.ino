@@ -8,8 +8,18 @@
 //#include <TFT_eSPI.h> // Graphics and font library for ILI9341 driver chip
 #include <SPI.h>
 #include <HTTPClient.h>
+#include <UniversalTelegramBot.h>
 
 //TFT_eSPI tft = TFT_eSPI();  // Invoke library, pins defined in User_Setup.h
+
+// Telegram BOT Token (Get from Botfather)
+#define BOT_TOKEN "5736236780:AAGY25ODDt3tbwV7Vt7qpxJvOj9SQsQkl5s"// Telegram BOT Token (Get from Botfather)
+const unsigned long BOT_MTBS = 1000; // mean time between scan messages
+
+WiFiClientSecure secured_client;
+UniversalTelegramBot bot(BOT_TOKEN, secured_client);
+unsigned long bot_lasttime;          // last time messages' scan has been done
+bool Start = false;
 
 HTTPClient http;
 
@@ -475,8 +485,52 @@ void runMonitor(void *name) {
   }
 }
 
+void handleNewMessages(int numNewMessages)
+{
+  Serial.println("handleNewMessages");
+  Serial.println(String(numNewMessages));
+
+  for (int i = 0; i < numNewMessages; i++)
+  {
+    String chat_id = bot.messages[i].chat_id;
+    String text = bot.messages[i].text;
+
+    String from_name = bot.messages[i].from_name;
+    if (from_name == "")
+      from_name = "Guest";
+
+    if (text == "/send_test_action")
+    {
+      bot.sendChatAction(chat_id, "typing");
+      delay(4000);
+      bot.sendMessage(chat_id, "Did you see the action message?");
+
+      // You can't use own message, just choose from one of bellow
+
+      //typing for text messages
+      //upload_photo for photos
+      //record_video or upload_video for videos
+      //record_audio or upload_audio for audio files
+      //upload_document for general files
+      //find_location for location data
+
+      //more info here - https://core.telegram.org/bots/api#sendchataction
+    }
+
+    if (text == "/start")
+    {
+      String welcome = "Welcome to Universal Arduino Telegram Bot library, " + from_name + ".\n";
+      welcome += "This is Chat Action Bot example.\n\n";
+      welcome += "/send_test_action : to send test chat action message\n";
+      bot.sendMessage(chat_id, welcome);
+    }
+  }
+}
+
+
 void setup() {
   Serial.begin(115200);
+  secured_client.setCACert("client-identity.p12"); // Add root certificate for api.telegram.org
   delay(500);
   pinMode(REDledPin, OUTPUT);
   pinMode(YELLOWledPin, OUTPUT);
@@ -531,8 +585,20 @@ void setup() {
     Serial.printf("Starting %s %s!\n", name, res == pdPASS ? "successful" : "failed");
   }
 
+  Serial.print("Retrieving time: ");
+  configTime(0, 0, "pool.ntp.org"); // get UTC time via NTP
+  time_t now = time(nullptr);
+  while (now < 24 * 3600)
+  {
+    Serial.print(".");
+    delay(100);
+    now = time(nullptr);
+  }
+  Serial.println(now);
+
   // Higher prio monitor task
   xTaskCreate(runMonitor, "Monitor", 5000, NULL, 4, NULL);
+
 }
 
 void getBTCPrice() {
@@ -558,11 +624,25 @@ void getBTCPrice() {
 
   Serial.print("BTCUSD Price: ");  //Display current price on serial monitor
   Serial.println(BTCUSDPrice.toDouble());
+
+  delay(5000);
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
   getBTCPrice();
-  delay(30000);
-  
+  if (millis() - bot_lasttime > BOT_MTBS)
+  {
+    int numNewMessages = bot.getUpdates(bot.last_message_received + 1);
+  Seri
+
+    while (numNewMessages)
+    {
+      Serial.println("got response");
+      handleNewMessages(numNewMessages);
+      numNewMessages = bot.getUpdates(bot.last_message_received + 1);
+    }
+
+    bot_lasttime = millis();
+  }
 }
