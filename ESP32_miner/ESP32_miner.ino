@@ -450,6 +450,7 @@ void runMonitor(void *name) {
     */
     Serial.print("Avg. hashrate: "); Serial.print(String((1.0*hashes)/elapsed));  Serial.println(" KH/s");
     Serial.print("Running time : "); Serial.print(String(elapsed/1000/60));  Serial.print(" m ");  Serial.print(String((elapsed/1000)%60)); Serial.println(" s");
+    Serial.print("Running hours : "); Serial.print(String(elapsed/3600000));  Serial.println(" h "); 
     Serial.print("Total hashes : "); Serial.print(String(hashes/1000000));  Serial.println(" M");
     Serial.print("Block templ. : "); Serial.println(String(templates));
     Serial.print("Shares 16bits: "); Serial.println(String(halfshares));
@@ -460,7 +461,9 @@ void runMonitor(void *name) {
     Serial.print("IP  : "); Serial.println(WiFi.localIP());
     Serial.println("");
     
-    P.print("16b "+String(halfshares));
+    P.print(String(elapsed/3600000)+"h");
+    delay(2000);
+    P.print(String((1.0*hashes)/elapsed)+" KH/s");
     delay(2000);
     P.print("32b "+String(shares));
     delay(2000);
