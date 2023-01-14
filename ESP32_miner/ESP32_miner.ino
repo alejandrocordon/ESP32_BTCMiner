@@ -8,8 +8,28 @@
 //#include <TFT_eSPI.h> // Graphics and font library for ILI9341 driver chip
 #include <SPI.h>
 #include <HTTPClient.h>
+#include <MD_Parola.h>
+#include <MD_MAX72xx.h>
 
 //TFT_eSPI tft = TFT_eSPI();  // Invoke library, pins defined in User_Setup.h
+
+// Define the number of devices we have in the chain and the hardware interface
+// NOTE: These pin numbers will probably not work with your hardware and may
+// need to be adapted
+#define HARDWARE_TYPE MD_MAX72XX::FC16_HW
+#define MAX_DEVICES 4
+
+#define CLK_PIN   18
+#define DATA_PIN  23
+#define CS_PIN     5
+
+
+uint8_t INTENSITY = 3; // default intensity
+
+// Hardware SPI connection
+MD_Parola P = MD_Parola(HARDWARE_TYPE, CS_PIN, MAX_DEVICES);
+// Arbitrary output pins
+// MD_Parola P = MD_Parola(HARDWARE_TYPE, DATA_PIN, CLK_PIN, CS_PIN, MAX_DEVICES);
 
 HTTPClient http;
 
@@ -18,6 +38,13 @@ long hashes = 0;
 int halfshares = 0; // increase if blockhash has 16 bits of zeroes
 int shares = 0; // increase if blockhash has 32 bits of zeroes
 int valids = 0; // increased if blockhash <= target
+
+
+uint8_t scrollSpeed = 25;    // default frame delay value
+textEffect_t scrollEffect = PA_SCROLL_LEFT;
+textPosition_t scrollAlign = PA_LEFT;
+uint16_t scrollPause = 2000; // in milliseconds
+
 
 bool checkHalfShare(unsigned char* hash) {
   bool valid = true;
@@ -433,7 +460,12 @@ void runMonitor(void *name) {
     Serial.print("IP  : "); Serial.println(WiFi.localIP());
     Serial.println("");
     
-    delay(25000);
+    P.print("16b "+String(halfshares));
+    delay(2000);
+    P.print("32b "+String(shares));
+    delay(2000);
+    P.print("valid "+String(valids));
+    delay(20000);
   }
 }
 
@@ -443,6 +475,10 @@ void setup(){
 
   // Idle task that would reset WDT never runs, because core 0 gets fully utilized
   disableCore0WDT();
+
+  P.begin();
+  P.print("BTC");
+  P.setIntensity(3);
 
   /*tft.init(); //Init tft
   tft.setRotation(1);
@@ -494,7 +530,7 @@ void setup(){
   xTaskCreate(runMonitor, "Monitor", 5000, NULL, 4, NULL);
 }
 
-void getBTCPrice(){
+String getBTCPrice(){
   http.begin(URL);
   int httpCode = http.GET();                                                            //Get crypto price from API
   StaticJsonDocument<2000> doc;
@@ -505,22 +541,31 @@ void getBTCPrice(){
     Serial.print(F("ERROR! deserializeJson Failed"));
     Serial.println(error.f_str());
     delay(2500);
-    return;
+    //return;
   }
 
   //Serial.print("HTTP Status Code: ");
   //Serial.println(httpCode);
-
+  //char *BTCUSDPrice = (char*) malloc(32);
   String BTCUSDPrice = doc["bpi"]["USD"]["rate_float"].as<String>();                    //Store crypto price and update date in local variables
   String lastUpdated = doc["time"]["updated"].as<String>();
   http.end();
 
   Serial.print("BTCUSD Price: ");                                                       //Display current price on serial monitor
   Serial.println(BTCUSDPrice.toDouble());
+  return BTCUSDPrice;
 }
 
 void loop(){
     // put your main code here, to run repeatedly:
-  getBTCPrice();
-  delay(30000);
+  
+  if (P.displayAnimate()){
+    String price = getBTCPrice();
+    
+    //P.displayText(price.c_str(), PA_CENTER, P.getSpeed(), P.getPause(), PA_SCROLL_DOWN, PA_SCROLL_DOWN);
+    P.print(price);
+    Serial.println(price);
+  }
+  delay(10000);
+  
 }
