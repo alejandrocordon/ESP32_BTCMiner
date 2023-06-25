@@ -4,13 +4,13 @@
  * **********************************************/
 
 // Wifi
-#define WIFI_SSID "soda"
-#define WIFI_PASSWORD "Load \"$\",8"
+#define WIFI_SSID "yours"
+#define WIFI_PASSWORD "yours"
 
 // Mining
 #define THREADS 2
 #define MAX_NONCE 1000000
-#define ADDRESS "bc1qgmx5f2zzlymd9a6stqsfl37dryaussxrhcv9dw" 
+#define ADDRESS "yours" 
 
 // Pool
 #define POOL_URL "solo.ckpool.org" //"btc.zsolo.bid" "eu.stratum.slushpool.com"
